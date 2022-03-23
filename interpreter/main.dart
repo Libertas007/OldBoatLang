@@ -5,18 +5,22 @@ Map<String, String> packages = {};
 int linePointer = 0;
 bool started = false;
 List<CodeBlockData> blocks = [];
+final String TEMPLATE =
+    "SAIL ON yacht\n\n// Here comes your code\n// Remove comment below to see \"Hello world!\" program\n// BROADCAST \"Hello world!\"\n\nARRIVE AT port";
 
 void main(List<String> args) {
   if (args.length == 0) {
+    print("Welcome to terminal for Boat! Start typing some Boat commands!");
     while (true) {
-      stdout.write("BoatLang terminal > ");
+      started = true;
+      stdout.write("Boat terminal > ");
       String? input = stdin.readLineSync();
 
       if (input == null) input = "";
       if (input == "") continue;
       print("-> " + executeExpression(input));
     }
-  } else {
+  } else if (args.length == 1) {
     String file = readFileSync(args[0]);
     List<String> lines = file.split("\n");
 
@@ -25,7 +29,25 @@ void main(List<String> args) {
 
       executeExpression(line);
     }
+  } else {
+    switch (args[0]) {
+      case "new":
+        createNew(args);
+        break;
+    }
   }
+}
+
+void createNew(List<String> args) {
+  print("Creating new project from default template...");
+  final String fileName = args[1];
+  final File file =
+      File(fileName.endsWith(".boat") ? fileName : fileName + ".boat");
+
+  file.createSync();
+  file.writeAsStringSync(TEMPLATE);
+  print(
+      "Created new file '${fileName.endsWith(".boat") ? fileName : fileName + ".boat"}'");
 }
 
 String executeExpression(String line) {
@@ -70,6 +92,8 @@ String executeExpression(String line) {
         return executeSink(args);
       case "SUBTRACT":
         return executeSubtract(args);
+      case "WAIT":
+        return executeWait(args);
       default:
         return error("Unknown command");
     }
@@ -430,6 +454,27 @@ String executeSubtract(List<String> args) {
   } else {
     return error("Variable ${args[3]} is not defined or is not BARREL!");
   }
+}
+
+// Syntax: WAIT [BARREL] (in ms)
+String executeWait(List<String> args) {
+  if (args.length != 2) {
+    return error("Invalid syntax");
+  }
+
+  double? ms = double.tryParse(args[1]);
+  if (ms == null) {
+    if (barrels.containsKey(args[1])) {
+      ms = barrels[args[1]];
+    } else {
+      return error("'SUBTRACT' must be followed by another variable or BARREL");
+    }
+  }
+
+  ms = ms!.roundToDouble();
+
+  sleep(Duration(milliseconds: ms.toInt()));
+  return "${ms}";
 }
 
 void createBarrel(String name, double value) {
