@@ -219,7 +219,7 @@ _Examples_:
 
 **Syntax**: `SINK`
 
-Your boat sinks thus terminates the program with code 0.
+Your boat sinks thus terminates the program with code 1.
 
 _Examples_:
 
