@@ -152,6 +152,10 @@ String executeDivide(List<String> args) {
     }
   }
 
+  if (toDivide == 0) {
+    return error("Cannot divide by zero!");
+  }
+
   if (barrels.containsKey(args[1])) {
     barrels[args[1]] = barrels[args[1]]! / toDivide!;
     return "${barrels[args[1]]}";
