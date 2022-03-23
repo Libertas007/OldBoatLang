@@ -2,6 +2,61 @@
 
 Simple programming language which will make you a captain.
 
+## Examples
+
+### Hello world:
+
+```
+SAIL ON yacht
+BROADCAST "Hello world!"
+ARRIVE AT port
+```
+
+### Simple calculator
+
+```
+SAIL ON yacht
+
+REQUEST PACKAGE num1
+REQUEST PACKAGE num2
+REQUEST BARREL result
+
+BROADCAST "Type the first number: "
+LISTEN TO num1
+
+BROADCAST "Type the second number: "
+LISTEN TO num2
+
+REPACK num1 TO BARREL
+REPACK num2 TO BARREL
+
+ADD num1 TO result
+ADD num2 TO result
+
+BROADCAST "sum is:"
+BROADCAST result
+
+SET result TO num1
+SUBTRACT num2 FROM result
+
+BROADCAST "difference is:"
+BROADCAST result
+
+SET result TO num1
+MULTIPLY result BY num2
+
+BROADCAST "product is: "
+BROADCAST result
+
+SET result TO num1
+DIVIDE result BY num2
+
+BROADCAST "share is: "
+BROADCAST result
+
+ARRIVE AT port
+```
+
 ## Language overview
 
 Language is made of simple commands. Details are below.
