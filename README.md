@@ -57,6 +57,10 @@ BROADCAST result
 ARRIVE AT port
 ```
 
+## How to use
+
+Write program ending in `.boat`. Then download `/build/boat.exe` and run `.\boat.exe {path to your script}` from the terminal.
+
 ## Language overview
 
 Language is made of simple commands. Details are below.
