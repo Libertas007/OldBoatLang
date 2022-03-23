@@ -17,7 +17,9 @@ In Boat, there are 2 data types, `BARREL` and `PACKAGE`. `BARREL` is float and `
 `REPACK` changes type of variable. If conversion is from PACKAGE to BARREL, the PACKAGE must be valid number.
 
 _Examples_:
+
 `REPACK x TO PACKAGE`
+
 `REPACK y TO BARREL`
 
 #### `REQUEST`
@@ -27,7 +29,9 @@ _Examples_:
 Creates variable `{varName}` of specified type.
 
 _Examples_:
+
 `REQUEST PACKAGE x`
+
 `REQUEST BARREL y`
 
 #### `RETURN` / `DROP`
@@ -37,7 +41,9 @@ _Examples_:
 Deletes variable `{varName}`.
 
 _Examples_:
+
 `RETURN x`
+
 `DROP y`
 
 #### `SET`
@@ -47,7 +53,9 @@ _Examples_:
 Sets value of variable {varName} to specified value.
 
 _Examples_:
+
 `SET x TO 5`
+
 `SET y TO "Hello world!"`
 
 ### Mathematical operations
@@ -59,7 +67,9 @@ _Examples_:
 Adds first BARREL to the second variable of type BARREL.
 
 _Examples_:
+
 `ADD 5 TO x`
+
 `ADD x TO y`
 
 #### `SUBTRACT`
@@ -69,7 +79,9 @@ _Examples_:
 Subtracts first BARREL from the second variable of type BARREL.
 
 _Examples_:
+
 `SUBTRACT 5 FROM x`
+
 `SUBTRACT x FROM y`
 
 #### `DIVIDE`
@@ -79,7 +91,9 @@ _Examples_:
 Divides first BARREL by the second variable of type BARREL.
 
 _Examples_:
+
 `DIVIDE x BY 5`
+
 `DIVIDE y BY x`
 
 #### `MULTIPLY`
@@ -89,7 +103,9 @@ _Examples_:
 Multiplies first BARREL by the second variable of type BARREL.
 
 _Examples_:
+
 `MULTIPLY x BY 5`
+
 `MULTIPLY y BY x`
 
 ### Input / output
@@ -101,8 +117,11 @@ _Examples_:
 Prints value of the first argument to the console.
 
 _Examples_:
+
 `BROADCAST x`
+
 `BROADCAST "Hello world!"`
+
 `BROADCAST 5`
 
 #### `LISTEN TO`
@@ -112,6 +131,57 @@ _Examples_:
 Reads input from the console and then sets it to variable `{varName}`.
 
 _Examples_:
-`BROADCAST x`
-`BROADCAST "Hello world!"`
-`BROADCAST 5`
+
+`LISTEN TO x`
+
+### Control flow
+
+#### `ARRIVE AT`
+
+**Syntax**: `ARRIVE AT {whatever}`
+
+Arrives at `{whatever}` thus terminates the program with code 0.
+
+_Examples_:
+
+`ARRIVE AT whatever`
+
+#### `CRASH INTO`
+
+**Syntax**: `CRASH INTO {whatever}`
+
+Crashes into `{whatever}` thus terminates the program with code 1.
+
+_Examples_:
+
+`CRASH INTO whatever`
+
+#### `SINK`
+
+**Syntax**: `SINK`
+
+Your boat sinks thus terminates the program with code 0.
+
+_Examples_:
+
+`SINK`
+
+#### `LOOP`
+
+**Syntax**: `LOOP [BARREL] TIMES:` or `LOOP [BARREL] TIMES AS {varName}:`
+
+Loops over block of code ended by `END` specified by first argument. If you want to use index, use the second syntax (`LOOP [BARREL] TIMES AS {varName}:`).
+
+_Examples_:
+
+```
+LOOP 5 TIMES:
+    BROADCAST "In loop!"
+END
+```
+
+```
+LOOP 5 TIMES AS i:
+    BROADCAST i
+END
+```
