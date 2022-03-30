@@ -1,5 +1,8 @@
 import 'dart:io';
 
+import 'lexer.dart';
+import 'scheduler.dart';
+
 Map<String, double> barrels = {};
 Map<String, String> packages = {};
 int linePointer = 0;
@@ -18,17 +21,23 @@ void main(List<String> args) {
 
       if (input == null) input = "";
       if (input == "") continue;
-      print("-> " + executeExpression(input));
+      final Lexer lexer = Lexer(input);
+      final Scheduler scheduler = Scheduler(lexer.tokens);
+
+      print("-> " + executeExpression(scheduler.tasks[0]));
     }
   } else if (args.length == 1) {
     String file = readFileSync(args[0]);
-    List<String> lines = file.split("\n");
 
-    for (linePointer = 0; linePointer < lines.length; linePointer++) {
-      String line = lines[linePointer].trim();
+    Lexer lexer = Lexer(file);
 
-      executeExpression(line);
-    }
+    Scheduler scheduler = Scheduler(lexer.tokens);
+
+    scheduler.tasks.forEach((task) {
+      if (task.tokens.length != 0) {
+        executeExpression(task);
+      }
+    });
   } else {
     switch (args[0]) {
       case "new":
@@ -44,56 +53,67 @@ void createNew(List<String> args) {
   final File file =
       File(fileName.endsWith(".boat") ? fileName : fileName + ".boat");
 
+  if (file.existsSync()) {
+    stdout.write(
+        "File '${fileName.endsWith(".boat") ? fileName : fileName + ".boat"}' already exists. Running 'boat new' will overwrite it. Do you want to continue? (y/N) ");
+    String answer = stdin.readLineSync() ?? "n";
+    if (answer.toLowerCase() != "y") {
+      print("Aborting action...");
+      return;
+    }
+  }
   file.createSync();
   file.writeAsStringSync(TEMPLATE);
   print(
       "Created new file '${fileName.endsWith(".boat") ? fileName : fileName + ".boat"}'");
 }
 
-String executeExpression(String line) {
-  List<String> args = line.trim().split(" ");
-  final String command = args[0];
-  if (args.length == 0 || line.trim().isEmpty || line.trim().startsWith("//"))
-    return "";
+String executeExpression(Task task) {
+  final String command = task.tokens.first.commandName ?? "";
 
-  if (command == "SAIL" && !started) return executeSail(args);
+  if (task.tokens.first.type == TokenType.BlockEnd) {
+    return executeEnd(task);
+  }
+
+  if (task.tokens.first.commandName == "SAIL ON") {
+    return executeSail(task);
+  }
 
   if (started)
     switch (command) {
       case "ADD":
-        return executeAdd(args);
-      case "ARRIVE":
-        return executeArrive(args);
+        return executeAdd(task);
+
+      case "ARRIVE AT":
+        return executeArrive(task);
       case "BROADCAST":
-        return executeBroadcast(args);
-      case "CRASH":
-        return executeCrash(args);
+        return executeBroadcast(task);
+      case "CRASH INTO":
+        return executeCrash(task);
       case "DIVIDE":
-        return executeDivide(args);
+        return executeDivide(task);
       case "DROP":
-        return executeDrop(args);
-      case "END":
-        return executeEnd(args);
-      case "LISTEN":
-        return executeListen(args);
+        return executeDrop(task);
+      case "LISTEN TO":
+        return executeListen(task);
       case "LOOP":
-        return executeLoop(args);
+        return executeLoop(task);
       case "MULTIPLY":
-        return executeMultiply(args);
+        return executeMultiply(task);
       case "REPACK":
-        return executeRepack(args);
+        return executeRepack(task);
       case "REQUEST":
-        return executeRequest(args);
+        return executeRequest(task);
       case "RETURN":
-        return executeReturn(args);
+        return executeReturn(task);
       case "SET":
-        return executeSet(args);
+        return executeSet(task);
       case "SINK":
-        return executeSink(args);
+        return executeSink(task);
       case "SUBTRACT":
-        return executeSubtract(args);
+        return executeSubtract(task);
       case "WAIT":
-        return executeWait(args);
+        return executeWait(task);
       default:
         return error("Unknown command");
     }
@@ -101,31 +121,26 @@ String executeExpression(String line) {
 }
 
 // Syntax: ADD [BARREL] TO [BARREL]
-String executeAdd(List<String> args) {
-  if (args.length != 4 || args[2] != "TO") {
-    return error("Invalid syntax");
+String executeAdd(Task task) {
+  if (task.tokens.length != 4 || task.tokens[2].keyword != "TO")
+    error("Invalid syntax");
+
+  double toAdd = task.tokens[1].barrelValue ??
+      getBarrel(task.tokens[1].variableName ?? "");
+
+  if (task.tokens.last.type != TokenType.VariableName) {
+    error("Invalid syntax");
   }
 
-  double? toAdd = double.tryParse(args[1]);
-  if (toAdd == null) {
-    if (barrels.containsKey(args[1])) {
-      toAdd = barrels[args[1]];
-    } else {
-      return error("'ADD' must be followed by another variable or BARREL");
-    }
-  }
+  barrels[task.tokens.last.variableName ?? ""] =
+      toAdd + barrels[task.tokens.last.variableName ?? ""]!;
 
-  if (barrels.containsKey(args[3])) {
-    barrels[args[3]] = barrels[args[3]]! + toAdd!;
-    return "${barrels[args[3]]}";
-  } else {
-    return error("Variable ${args[3]} is not defined or is not BARREL!");
-  }
+  return barrels[task.tokens.last.variableName ?? ""].toString();
 }
 
 // Syntax: ARRIVE AT [PACKAGE]
-String executeArrive(List<String> args) {
-  if (args.length < 3 || args[1] != "AT") {
+String executeArrive(Task task) {
+  if (task.tokens.length != 2) {
     return error("Invalid syntax!");
   }
 
@@ -133,28 +148,33 @@ String executeArrive(List<String> args) {
 }
 
 // Syntax: BROADCAST [BARREL|PACKAGE]
-String executeBroadcast(List<String> args) {
-  if (args.length == 1) {
+String executeBroadcast(Task task) {
+  if (task.tokens.length != 2) {
     return error("Invalid syntax");
   }
 
-  if (!args[1].startsWith("\"") && !args[1].endsWith("\"")) {
-    String toPrint = packages[args[1]] ?? barrels[args[1]].toString();
-    toPrint = toPrint
-        .replaceAll("true", "YES")
-        .replaceAll("false", "NO")
-        .replaceAll("null", "EMPTY");
-    print(toPrint);
-    return "\"$toPrint\"";
+  String toPrint = "";
+
+  if (task.tokens.last.type == TokenType.VariableName) {
+    if (packages.containsKey(task.tokens.last.variableName ?? ""))
+      toPrint = getPackage(task.tokens.last.variableName ?? "");
+    else
+      toPrint = getBarrel(task.tokens.last.variableName ?? "").toString();
+  } else if (task.tokens.last.type == TokenType.PackageLiteral) {
+    toPrint = task.tokens.last.packageValue ?? "";
+  } else if (task.tokens.last.type == TokenType.BarrelLiteral) {
+    toPrint = task.tokens.last.barrelValue.toString();
+  } else if (task.tokens.last.type == TokenType.Task) {
+    toPrint = executeExpression(task.tokens.last.task ?? Task([]));
   }
 
-  print(args.sublist(1).join(" ").split("\"")[1]);
-  return args.sublist(1).join(" ").split("\"")[1];
+  print(toPrint);
+  return toPrint;
 }
 
 // Syntax: CRASH INTO [PACKAGE]
-String executeCrash(List<String> args) {
-  if (args.length < 3 || args[1] != "INTO") {
+String executeCrash(Task task) {
+  if (task.tokens.length != 2) {
     return error("Invalid syntax");
   }
 
@@ -162,52 +182,61 @@ String executeCrash(List<String> args) {
 }
 
 // Syntax: DIVIDE [BARREL] BY [BARREL]
-String executeDivide(List<String> args) {
-  if (args.length != 4 || args[2] != "BY") {
+String executeDivide(Task task) {
+  if (task.tokens.length != 4 || task.tokens[2].keyword != "BY") {
     return error("Invalid syntax");
   }
 
-  double? toDivide = double.tryParse(args[3]);
-  if (toDivide == null) {
-    if (barrels.containsKey(args[3])) {
-      toDivide = barrels[args[3]];
-    } else {
-      return error("'BY' must be followed by another variable or BARREL");
+  double toDivide = 0;
+
+  if (task.tokens.last.type == TokenType.Task) {
+    if (double.tryParse(executeExpression(task.tokens.last.task ?? Task([]))) ==
+        null) {
+      error("Invalid return type of subtask");
+      return "";
     }
+
+    toDivide =
+        double.tryParse(executeExpression(task.tokens.last.task ?? Task([]))) ??
+            0;
+  } else {
+    toDivide = task.tokens.last.barrelValue ??
+        getBarrel(task.tokens.last.variableName ?? "");
+  }
+
+  if (task.tokens[1].type != TokenType.VariableName) {
+    error("Invalid syntax");
   }
 
   if (toDivide == 0) {
-    return error("Cannot divide by zero!");
+    error("Cannot divide by zero!");
   }
 
-  if (barrels.containsKey(args[1])) {
-    barrels[args[1]] = barrels[args[1]]! / toDivide!;
-    return "${barrels[args[1]]}";
-  } else {
-    return error("Variable ${args[1]} is not defined or is not BARREL!");
-  }
+  barrels[task.tokens[1].variableName ?? ""] =
+      barrels[task.tokens[1].variableName ?? ""]! / toDivide;
+  return barrels[task.tokens[1].variableName ?? ""].toString();
 }
 
 // Syntax: DROP [BARREL|PACKAGE]
-String executeDrop(List<String> args) {
-  if (args.length != 2) {
+String executeDrop(Task task) {
+  if (task.tokens.length != 2) {
     return error("Invalid syntax");
   }
 
-  if (packages.containsKey(args[1])) {
-    packages.remove(args[1]);
+  if (packages.containsKey(task.tokens.last.variableName)) {
+    packages.remove(task.tokens.last.variableName);
   }
 
-  if (barrels.containsKey(args[1])) {
-    barrels.remove(args[1]);
+  if (barrels.containsKey(task.tokens.last.variableName)) {
+    barrels.remove(task.tokens.last.variableName);
   }
 
   return "";
 }
 
 // Syntax: END
-String executeEnd(List<String> args) {
-  if (args.length != 1) {
+String executeEnd(Task task) {
+  if (task.tokens.length != 1) {
     return error("Invalid syntax!");
   }
 
@@ -234,49 +263,49 @@ String executeEnd(List<String> args) {
   return "";
 }
 
-// Syntax: LISTEN ON [PACKAGE]
-String executeListen(List<String> args) {
-  if (args.length != 3) {
+// Syntax: LISTEN TO [PACKAGE]
+String executeListen(Task task) {
+  if (task.tokens.length != 2) {
     return error("Invalid syntax");
   }
 
-  if (!packages.containsKey(args[2])) {
-    return error("Variable ${args[2]} is not defined or is not PACKAGE!");
+  if (!packages.containsKey(task.tokens.last.variableName)) {
+    return error(
+        "Variable ${task.tokens.last.variableName} is not defined or is not PACKAGE!");
   }
 
   String input = stdin.readLineSync() ?? "";
 
-  packages[args[2]] = input;
+  packages[task.tokens.last.variableName ?? ""] = input;
 
   return "\"$input\"";
 }
 
 // Syntax: LOOP [BARREL] TIMES: ... END
-String executeLoop(List<String> args) {
-  if (args.length < 3 ||
-      !args[2].startsWith("TIMES") ||
-      !args.last.endsWith(":")) {
+String executeLoop(Task task) {
+  if (task.tokens.length < 5 ||
+      task.tokens[2].keyword == "TIMES" ||
+      task.tokens.last.type == TokenType.BlockStart) {
     return error("Invalid syntax");
   }
 
-  double? iterations = double.tryParse(args[1]);
-  if (iterations == null) {
-    if (barrels.containsKey(args[1])) {
-      iterations = barrels[args[1]];
-    } else {
-      return error("'LOOP' must be followed by another variable or BARREL");
-    }
+  double iterations = 0;
+
+  if (task.tokens[1].type == TokenType.BarrelLiteral) {
+    iterations = task.tokens[1].barrelValue ?? 0;
+  } else if (task.tokens[1].type == TokenType.VariableName) {
+    iterations = getBarrel(task.tokens[1].variableName ?? "");
   }
 
   CodeBlockData toAdd = CodeBlockData(
     start: linePointer,
     type: CodeBlockType.Loop,
-    iterationsLeft: iterations!.ceil() - 1,
+    iterationsLeft: iterations.ceil() - 1,
   );
 
-  if (args.length == 5 && args[3] == "AS") {
-    createBarrel(args[4].replaceAll(":", ""), 0);
-    toAdd.iterationVar = args[4].replaceAll(":", "");
+  if (task.tokens.length == 5 && task.tokens[3].keyword == "AS") {
+    createBarrel(task.tokens[4].variableName ?? "", 0);
+    toAdd.iterationVar = task.tokens[4].variableName ?? "";
   }
 
   blocks.add(toAdd);
@@ -284,86 +313,97 @@ String executeLoop(List<String> args) {
 }
 
 // Syntax: IF {CONDITION}: ... END
-String executeIf(List<String> args) {
+/* String executeIf(Task task) {
   if (args.length < 4 || !args.last.endsWith(":")) {
     return error("Invalid syntax");
   }
   return "";
-}
+} */
 
 // Syntax: MULTIPLY [BARREL] BY [BARREL]
-String executeMultiply(List<String> args) {
-  if (args.length != 4 || args[2] != "BY") {
+String executeMultiply(Task task) {
+  if (task.tokens.length != 4 || task.tokens[2].keyword != "BY") {
     return error("Invalid syntax");
   }
 
-  double? toMultiply = double.tryParse(args[3]);
-  if (toMultiply == null) {
-    if (barrels.containsKey(args[3])) {
-      toMultiply = barrels[args[3]];
-    } else {
-      return error("'BY' must be followed by another variable or BARREL");
+  double toMultiply = 0;
+
+  if (task.tokens.last.type == TokenType.Task) {
+    if (double.tryParse(executeExpression(task.tokens.last.task ?? Task([]))) ==
+        null) {
+      error("Invalid return type of subtask");
+      return "";
     }
+
+    toMultiply =
+        double.tryParse(executeExpression(task.tokens.last.task ?? Task([]))) ??
+            0;
+  } else {
+    toMultiply = task.tokens.last.barrelValue ??
+        getBarrel(task.tokens.last.variableName ?? "");
   }
 
-  if (barrels.containsKey(args[1])) {
-    barrels[args[1]] = barrels[args[1]]! * toMultiply!;
-    return "${barrels[args[1]]}";
-  } else {
-    return error("Variable ${args[1]} is not defined or is not BARREL!");
+  if (task.tokens[1].type != TokenType.VariableName) {
+    error("Invalid syntax");
   }
+
+  barrels[task.tokens[1].variableName ?? ""] =
+      barrels[task.tokens[1].variableName ?? ""]! / toMultiply;
+  return barrels[task.tokens[1].variableName ?? ""].toString();
 }
 
 // Syntax: REPACK [BARREL|PACKAGE] TO (BARREL|PACKAGE)
-String executeRepack(List<String> args) {
-  if (args.length != 4 || args[2] != "TO") {
+String executeRepack(Task task) {
+  if (task.tokens.length != 4 || task.tokens[2].keyword != "TO") {
     return error("Invalid syntax");
   }
 
-  if (barrels.containsKey(args[1])) {
-    if (args[3] == "PACKAGE") {
-      String value = barrels[args[1]].toString();
+  if (barrels.containsKey(task.tokens[1].variableName)) {
+    if (task.tokens[3].variableType == "PACKAGE") {
+      String value = barrels[task.tokens[1].variableName].toString();
 
-      barrels.remove(args[1]);
-      createPackage(args[1], value);
+      barrels.remove(task.tokens[1].variableName);
+      createPackage(task.tokens[1].variableName ?? "", value);
       return '';
     }
     return "";
   }
 
-  if (packages.containsKey(args[1])) {
-    if (args[3] == "BARREL") {
-      double? value = double.tryParse(packages[args[1]] ?? "");
+  if (packages.containsKey(task.tokens[1].variableName)) {
+    if (task.tokens[3].variableType == "BARREL") {
+      double? value =
+          double.tryParse(packages[task.tokens[1].variableName] ?? "");
 
       if (value == null) {
-        error("Cannot convert ${packages[args[1]]} to BARREL!");
+        error(
+            "Cannot convert ${packages[task.tokens[1].variableName]} to BARREL!");
         return '';
       }
 
-      packages.remove(args[1]);
-      createBarrel(args[1], value);
+      packages.remove(task.tokens[1].variableName);
+      createBarrel(task.tokens[1].variableName ?? "", value);
       return '';
     }
     return "";
   }
 
-  error("Variable ${args[1]} is not defined");
+  error("Variable ${task.tokens[1].variableName} is not defined");
   return "";
 }
 
 // Syntax: REQUEST (BARREL|PACKAGE) [PACKAGE]
-String executeRequest(List<String> args) {
-  if (args.length != 3) {
+String executeRequest(Task task) {
+  if (task.tokens.length != 3) {
     return error("Invalid syntax");
   }
 
-  if (args[1] == "BARREL") {
-    createBarrel(args[2], 0);
+  if (task.tokens[1].variableType == "BARREL") {
+    createBarrel(task.tokens[2].variableName ?? "", 0);
     return "0";
   }
 
-  if (args[1] == "PACKAGE") {
-    createPackage(args[2], "");
+  if (task.tokens[1].variableType == "PACKAGE") {
+    createPackage(task.tokens[2].variableName ?? "", "");
     return "\"\"";
   }
 
@@ -372,106 +412,129 @@ String executeRequest(List<String> args) {
 }
 
 // Syntax: RETURN [BARREL|PACKAGE]
-String executeReturn(List<String> args) {
-  if (args.length != 2) {
+String executeReturn(Task task) {
+  if (task.tokens.length != 2) {
     return error("Invalid syntax");
   }
 
-  if (packages.containsKey(args[1])) {
-    packages.remove(args[1]);
+  if (packages.containsKey(task.tokens[1])) {
+    packages.remove(task.tokens[1]);
   }
 
-  if (barrels.containsKey(args[1])) {
-    barrels.remove(args[1]);
+  if (barrels.containsKey(task.tokens[1])) {
+    barrels.remove(task.tokens[1]);
   }
 
   return "";
 }
 
 // Syntax: SAIL ON [PACKAGE]
-String executeSail(List<String> args) {
-  if (args.length != 3 || args[1] != "ON") {
+String executeSail(Task task) {
+  if (task.tokens.length != 2) {
     return error("Invalid syntax");
   }
   started = true;
   return "";
 }
 
-// Syntax: REPACK [BARREL|PACKAGE] TO (BARREL|PACKAGE)
-String executeSet(List<String> args) {
-  if (args.length < 4 || args[2] != "TO") {
+// Syntax: SET [BARREL|PACKAGE] TO [BARREL|PACKAGE]
+String executeSet(Task task) {
+  if (task.tokens.length != 4 || task.tokens[2].keyword != "TO") {
     return error("Invalid syntax");
   }
 
-  if (barrels.containsKey(args[1])) {
-    double? toSet = double.tryParse(args[3]);
-    if (barrels.containsKey(args[3])) toSet = barrels[args[3]];
+  if (barrels.containsKey(task.tokens[1].variableName)) {
+    double toSet = 0;
+    if (task.tokens.last.type == TokenType.Task) {
+      if (double.tryParse(
+              executeExpression(task.tokens.last.task ?? Task([]))) ==
+          null) {
+        error("Invalid return type of subtask");
+        return "";
+      }
 
-    if (toSet == null)
-      return error("'${args[3]}' cannot be assigned to BARREL!");
-    barrels[args[1]] = toSet;
+      toSet = double.tryParse(
+              executeExpression(task.tokens.last.task ?? Task([]))) ??
+          0;
+    } else if (task.tokens[3].type == TokenType.VariableName)
+      toSet = barrels[task.tokens[3].variableName ?? ""] ?? 0;
+    else if (task.tokens[3].type == TokenType.BarrelLiteral)
+      toSet = task.tokens[3].barrelValue ?? 0;
+
+    barrels[task.tokens[1].variableName ?? ""] = toSet;
     return toSet.toString();
   }
 
-  if (packages.containsKey(args[1])) {
+  if (packages.containsKey(task.tokens[1].variableName)) {
     String toSet = "";
-    if (packages.containsKey(args[3]))
-      toSet = packages[args[3]] ?? "";
+    if (task.tokens.last.type == TokenType.Task) {
+      toSet = executeExpression(task.tokens.last.task ?? Task([]));
+      toSet = toSet.substring(1, toSet.length - 1);
+    } else if (packages.containsKey(task.tokens[3].variableName))
+      toSet = packages[task.tokens[3].variableName] ?? "";
     else
-      toSet = args.sublist(3).join(" ").split("\"")[1];
+      toSet = task.tokens.last.packageValue ?? "";
 
-    packages[args[1]] = toSet;
+    packages[task.tokens[1].variableName ?? ""] = toSet;
     return "\"$toSet\"";
   }
 
-  error("Variable ${args[1]} is not defined");
+  error("Variable ${task.tokens[1].variableName} is not defined");
   return "";
 }
 
 // Syntax: SINK
-String executeSink(List<String> args) {
+String executeSink(Task task) {
   return exit(1);
 }
 
 // Syntax: SUBTRACT [BARREL] FROM [BARREL]
-String executeSubtract(List<String> args) {
-  if (args.length != 4 || args[2] != "FROM") {
-    return error("Invalid syntax");
+String executeSubtract(Task task) {
+  if (task.tokens.length != 4 || task.tokens[2].keyword != "FROM") {
+    error("Invalid syntax");
   }
 
-  double? toSubtract = double.tryParse(args[1]);
-  if (toSubtract == null) {
-    if (barrels.containsKey(args[1])) {
-      toSubtract = barrels[args[1]];
-    } else {
-      return error("'SUBTRACT' must be followed by another variable or BARREL");
-    }
+  double toSubtract = task.tokens[1].barrelValue ??
+      getBarrel(task.tokens[1].variableName ?? "");
+
+  if (task.tokens.last.type != TokenType.VariableName) {
+    error("Invalid syntax");
   }
 
-  if (barrels.containsKey(args[3])) {
-    barrels[args[3]] = barrels[args[3]]! - toSubtract!;
-    return "${barrels[args[3]]}";
-  } else {
-    return error("Variable ${args[3]} is not defined or is not BARREL!");
-  }
+  barrels[task.tokens.last.variableName ?? ""] =
+      barrels[task.tokens.last.variableName ?? ""]! - toSubtract;
+
+  return barrels[task.tokens.last.variableName ?? ""].toString();
 }
 
 // Syntax: WAIT [BARREL] (in ms)
-String executeWait(List<String> args) {
-  if (args.length != 2) {
+String executeWait(Task task) {
+  if (task.tokens.length != 2) {
     return error("Invalid syntax");
   }
 
-  double? ms = double.tryParse(args[1]);
-  if (ms == null) {
-    if (barrels.containsKey(args[1])) {
-      ms = barrels[args[1]];
-    } else {
-      return error("'SUBTRACT' must be followed by another variable or BARREL");
+  double ms = 0;
+
+  if (task.tokens.last.type == TokenType.Task) {
+    if (double.tryParse(executeExpression(task.tokens.last.task ?? Task([]))) ==
+        null) {
+      error("Invalid return type of subtask");
+      return "";
     }
+
+    ms =
+        double.tryParse(executeExpression(task.tokens.last.task ?? Task([]))) ??
+            0;
+  } else {
+    ms = task.tokens.last.barrelValue ??
+        getBarrel(task.tokens.last.variableName ?? "");
   }
 
-  ms = ms!.roundToDouble();
+  if (task.tokens[1].type != TokenType.VariableName) {
+    error("Invalid syntax");
+  }
+
+  ms = ms.roundToDouble();
 
   sleep(Duration(milliseconds: ms.toInt()));
   return "${ms}";
@@ -493,7 +556,23 @@ void createPackage(String name, String value) {
   packages.addEntries([MapEntry(name, value)]);
 }
 
-bool evaluateExpression(List<String> args) {
+double getBarrel(String name) {
+  if (barrels.containsKey(name)) {
+    return barrels[name] ?? 0.0;
+  }
+  error("Variable '$name' does not exist or is not BARREL!");
+  return 0.0;
+}
+
+String getPackage(String name) {
+  if (packages.containsKey(name)) {
+    return packages[name] ?? "";
+  }
+  error("Variable '$name' does not exist or is not PACKAGE!");
+  return "";
+}
+
+/* bool evaluateExpression(Task task) {
   dynamic previous;
   bool stringConstruction = false;
   Type expect = String;
@@ -520,10 +599,10 @@ bool evaluateExpression(List<String> args) {
   }
 
   return false;
-}
+} */
 
 String error(String text) {
-  print("Error on line $linePointer: $text");
+  print(text);
   return exit(1);
 }
 
