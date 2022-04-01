@@ -66,7 +66,8 @@ enum TokenType {
   CommandName,
   EndOfLine,
   EndOfFile,
-  ReturnValueBind,
+  ReturnValueBindStart,
+  ReturnValueBindEnd,
   Keyword,
   BlockStart,
   BlockEnd,
@@ -126,8 +127,11 @@ class Lexer {
         case ":":
           tokens.add(Token(TokenType.BlockStart));
           break;
-        case "|":
-          tokens.add(Token(TokenType.ReturnValueBind));
+        case "(":
+          tokens.add(Token(TokenType.ReturnValueBindStart));
+          break;
+        case ")":
+          tokens.add(Token(TokenType.ReturnValueBindEnd));
           break;
         case "/":
           if (comment)

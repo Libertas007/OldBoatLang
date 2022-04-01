@@ -81,6 +81,8 @@ _Examples_:
 
 `REPACK y TO BARREL`
 
+Doesn't return anything.
+
 #### `REQUEST`
 
 **Syntax**: `REQUEST (BARREL|PACKAGE) {varName}`
@@ -92,6 +94,8 @@ _Examples_:
 `REQUEST PACKAGE x`
 
 `REQUEST BARREL y`
+
+Returns `0` if the new variable is `BARREL` or empty string if the new variable is `PACKAGE`.
 
 #### `RETURN` / `DROP`
 
@@ -105,6 +109,8 @@ _Examples_:
 
 `DROP y`
 
+Doesn't return anything.
+
 #### `SET`
 
 **Syntax**: `SET {varName} TO [BARREL|PACKAGE]`
@@ -116,6 +122,8 @@ _Examples_:
 `SET x TO 5`
 
 `SET y TO "Hello world!"`
+
+Return the new value of variable.
 
 ### Mathematical operations
 
@@ -131,6 +139,8 @@ _Examples_:
 
 `ADD x TO y`
 
+Returns the new value of variable.
+
 #### `SUBTRACT`
 
 **Syntax**: `SUBTRACT [BARREL] FROM [BARREL]`
@@ -142,6 +152,8 @@ _Examples_:
 `SUBTRACT 5 FROM x`
 
 `SUBTRACT x FROM y`
+
+Returns the new value of variable.
 
 #### `DIVIDE`
 
@@ -155,6 +167,8 @@ _Examples_:
 
 `DIVIDE y BY x`
 
+Returns the new value of variable.
+
 #### `MULTIPLY`
 
 **Syntax**: `MULTIPLY [BARREL] BY [BARREL]`
@@ -166,6 +180,8 @@ _Examples_:
 `MULTIPLY x BY 5`
 
 `MULTIPLY y BY x`
+
+Returns the new value of variable.
 
 ### Input / output
 
@@ -183,6 +199,8 @@ _Examples_:
 
 `BROADCAST 5`
 
+Returns the broadcasted value.
+
 #### `LISTEN TO`
 
 **Syntax**: `LISTEN TO {varName}`
@@ -192,6 +210,8 @@ Reads input from the console and then sets it to variable `{varName}`.
 _Examples_:
 
 `LISTEN TO x`
+
+ReturnS the new value of variable.
 
 ### Control flow
 
@@ -205,6 +225,8 @@ _Examples_:
 
 `ARRIVE AT whatever`
 
+Doesn't return anything.
+
 #### `CRASH INTO`
 
 **Syntax**: `CRASH INTO {whatever}`
@@ -215,6 +237,8 @@ _Examples_:
 
 `CRASH INTO whatever`
 
+Doesn't return anything.
+
 #### `SINK`
 
 **Syntax**: `SINK`
@@ -224,6 +248,8 @@ Your boat sinks thus terminates the program with code 0.
 _Examples_:
 
 `SINK`
+
+Doesn't return anything.
 
 #### `LOOP`
 
@@ -244,3 +270,21 @@ LOOP 5 TIMES AS i:
     BROADCAST i
 END
 ```
+
+Doesn't return anything.
+
+### Return value
+
+Every command in Boat returns some value. By using `()`, you can use this return value in commands.
+
+```
+SAIL ON yacht
+
+REQUEST BARREL X
+REQUEST BARREL Y
+
+SET X TO 12
+DIVIDE X BY (ADD 2 TO Y)
+```
+
+Expression in parentheses always runs first, expected value of `X` is now `6`.

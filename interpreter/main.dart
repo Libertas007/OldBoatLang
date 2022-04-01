@@ -83,7 +83,6 @@ String executeExpression(Task task) {
     switch (command) {
       case "ADD":
         return executeAdd(task);
-
       case "ARRIVE AT":
         return executeArrive(task);
       case "BROADCAST":
@@ -123,13 +122,19 @@ String executeExpression(Task task) {
 // Syntax: ADD [BARREL] TO [BARREL]
 String executeAdd(Task task) {
   if (task.tokens.length != 4 || task.tokens[2].keyword != "TO")
-    error("Invalid syntax");
+    error("Hey captain, we don't understand your orders!");
 
-  double toAdd = task.tokens[1].barrelValue ??
-      getBarrel(task.tokens[1].variableName ?? "");
+  double toAdd = 0;
+  ArgumentHelper toAddArg = ArgumentHelper(task.tokens[1]);
+
+  if (toAddArg.isBarrelSet) {
+    toAdd = toAddArg.barrelValue;
+  } else {
+    error("We cannot add it!");
+  }
 
   if (task.tokens.last.type != TokenType.VariableName) {
-    error("Invalid syntax");
+    error("Hey captain, we don't understand your orders!");
   }
 
   barrels[task.tokens.last.variableName ?? ""] =
@@ -141,7 +146,7 @@ String executeAdd(Task task) {
 // Syntax: ARRIVE AT [PACKAGE]
 String executeArrive(Task task) {
   if (task.tokens.length != 2) {
-    return error("Invalid syntax!");
+    return error("Hey captain, we don't understand your orders!!");
   }
 
   return exit(0);
@@ -150,22 +155,16 @@ String executeArrive(Task task) {
 // Syntax: BROADCAST [BARREL|PACKAGE]
 String executeBroadcast(Task task) {
   if (task.tokens.length != 2) {
-    return error("Invalid syntax");
+    return error("Hey captain, we don't understand your orders!");
   }
 
   String toPrint = "";
+  ArgumentHelper toPrintArg = ArgumentHelper(task.tokens[1]);
 
-  if (task.tokens.last.type == TokenType.VariableName) {
-    if (packages.containsKey(task.tokens.last.variableName ?? ""))
-      toPrint = getPackage(task.tokens.last.variableName ?? "");
-    else
-      toPrint = getBarrel(task.tokens.last.variableName ?? "").toString();
-  } else if (task.tokens.last.type == TokenType.PackageLiteral) {
-    toPrint = task.tokens.last.packageValue ?? "";
-  } else if (task.tokens.last.type == TokenType.BarrelLiteral) {
-    toPrint = task.tokens.last.barrelValue.toString();
-  } else if (task.tokens.last.type == TokenType.Task) {
-    toPrint = executeExpression(task.tokens.last.task ?? Task([]));
+  if (toPrintArg.isBarrelSet) {
+    toPrint = toPrintArg.barrelValue.toString();
+  } else {
+    toPrint = toPrintArg.packageValue;
   }
 
   print(toPrint);
@@ -175,7 +174,7 @@ String executeBroadcast(Task task) {
 // Syntax: CRASH INTO [PACKAGE]
 String executeCrash(Task task) {
   if (task.tokens.length != 2) {
-    return error("Invalid syntax");
+    return error("Hey captain, we don't understand your orders!");
   }
 
   return exit(1);
@@ -184,32 +183,24 @@ String executeCrash(Task task) {
 // Syntax: DIVIDE [BARREL] BY [BARREL]
 String executeDivide(Task task) {
   if (task.tokens.length != 4 || task.tokens[2].keyword != "BY") {
-    return error("Invalid syntax");
+    return error("Hey captain, we don't understand your orders!");
   }
 
   double toDivide = 0;
+  ArgumentHelper toDivideArg = ArgumentHelper(task.tokens.last);
 
-  if (task.tokens.last.type == TokenType.Task) {
-    if (double.tryParse(executeExpression(task.tokens.last.task ?? Task([]))) ==
-        null) {
-      error("Invalid return type of subtask");
-      return "";
-    }
-
-    toDivide =
-        double.tryParse(executeExpression(task.tokens.last.task ?? Task([]))) ??
-            0;
+  if (toDivideArg.isBarrelSet) {
+    toDivide = toDivideArg.barrelValue;
   } else {
-    toDivide = task.tokens.last.barrelValue ??
-        getBarrel(task.tokens.last.variableName ?? "");
+    error("We cannot divide it!");
   }
 
   if (task.tokens[1].type != TokenType.VariableName) {
-    error("Invalid syntax");
+    error("Hey captain, we don't understand your orders!");
   }
 
   if (toDivide == 0) {
-    error("Cannot divide by zero!");
+    error("Hey captain, we cannot divide by zero!");
   }
 
   barrels[task.tokens[1].variableName ?? ""] =
@@ -220,7 +211,7 @@ String executeDivide(Task task) {
 // Syntax: DROP [BARREL|PACKAGE]
 String executeDrop(Task task) {
   if (task.tokens.length != 2) {
-    return error("Invalid syntax");
+    return error("Hey captain, we don't understand your orders!");
   }
 
   if (packages.containsKey(task.tokens.last.variableName)) {
@@ -237,7 +228,7 @@ String executeDrop(Task task) {
 // Syntax: END
 String executeEnd(Task task) {
   if (task.tokens.length != 1) {
-    return error("Invalid syntax!");
+    return error("Hey captain, we don't understand your orders!!");
   }
 
   CodeBlockData last = blocks.last;
@@ -266,12 +257,12 @@ String executeEnd(Task task) {
 // Syntax: LISTEN TO [PACKAGE]
 String executeListen(Task task) {
   if (task.tokens.length != 2) {
-    return error("Invalid syntax");
+    return error("Hey captain, we don't understand your orders!");
   }
 
   if (!packages.containsKey(task.tokens.last.variableName)) {
     return error(
-        "Variable ${task.tokens.last.variableName} is not defined or is not PACKAGE!");
+        "No matter how hard we try, we cannot find package ${task.tokens.last.variableName} in your cabin...");
   }
 
   String input = stdin.readLineSync() ?? "";
@@ -286,15 +277,15 @@ String executeLoop(Task task) {
   if (task.tokens.length < 5 ||
       task.tokens[2].keyword == "TIMES" ||
       task.tokens.last.type == TokenType.BlockStart) {
-    return error("Invalid syntax");
+    return error("Hey captain, we don't understand your orders!");
   }
 
   double iterations = 0;
-
-  if (task.tokens[1].type == TokenType.BarrelLiteral) {
-    iterations = task.tokens[1].barrelValue ?? 0;
-  } else if (task.tokens[1].type == TokenType.VariableName) {
-    iterations = getBarrel(task.tokens[1].variableName ?? "");
+  ArgumentHelper iterationsArg = ArgumentHelper(task.tokens[1]);
+  if (iterationsArg.isBarrelSet) {
+    iterations = iterationsArg.barrelValue;
+  } else {
+    error("Cannot loop!");
   }
 
   CodeBlockData toAdd = CodeBlockData(
@@ -315,7 +306,7 @@ String executeLoop(Task task) {
 // Syntax: IF {CONDITION}: ... END
 /* String executeIf(Task task) {
   if (args.length < 4 || !args.last.endsWith(":")) {
-    return error("Invalid syntax");
+    return error("Hey captain, we don't understand your orders!");
   }
   return "";
 } */
@@ -323,28 +314,20 @@ String executeLoop(Task task) {
 // Syntax: MULTIPLY [BARREL] BY [BARREL]
 String executeMultiply(Task task) {
   if (task.tokens.length != 4 || task.tokens[2].keyword != "BY") {
-    return error("Invalid syntax");
+    return error("Hey captain, we don't understand your orders!");
   }
 
   double toMultiply = 0;
+  ArgumentHelper toMultiplyArg = ArgumentHelper(task.tokens.last);
 
-  if (task.tokens.last.type == TokenType.Task) {
-    if (double.tryParse(executeExpression(task.tokens.last.task ?? Task([]))) ==
-        null) {
-      error("Invalid return type of subtask");
-      return "";
-    }
-
-    toMultiply =
-        double.tryParse(executeExpression(task.tokens.last.task ?? Task([]))) ??
-            0;
+  if (toMultiplyArg.isBarrelSet) {
+    toMultiply = toMultiplyArg.barrelValue;
   } else {
-    toMultiply = task.tokens.last.barrelValue ??
-        getBarrel(task.tokens.last.variableName ?? "");
+    error("Cannot multiply!");
   }
 
   if (task.tokens[1].type != TokenType.VariableName) {
-    error("Invalid syntax");
+    error("Hey captain, we don't understand your orders!");
   }
 
   barrels[task.tokens[1].variableName ?? ""] =
@@ -355,7 +338,7 @@ String executeMultiply(Task task) {
 // Syntax: REPACK [BARREL|PACKAGE] TO (BARREL|PACKAGE)
 String executeRepack(Task task) {
   if (task.tokens.length != 4 || task.tokens[2].keyword != "TO") {
-    return error("Invalid syntax");
+    return error("Hey captain, we don't understand your orders!");
   }
 
   if (barrels.containsKey(task.tokens[1].variableName)) {
@@ -376,7 +359,7 @@ String executeRepack(Task task) {
 
       if (value == null) {
         error(
-            "Cannot convert ${packages[task.tokens[1].variableName]} to BARREL!");
+            "Hey, this package ${packages[task.tokens[1].variableName]} cannot be converted to barrel");
         return '';
       }
 
@@ -394,7 +377,7 @@ String executeRepack(Task task) {
 // Syntax: REQUEST (BARREL|PACKAGE) [PACKAGE]
 String executeRequest(Task task) {
   if (task.tokens.length != 3) {
-    return error("Invalid syntax");
+    return error("Hey captain, we don't understand your orders!");
   }
 
   if (task.tokens[1].variableType == "BARREL") {
@@ -407,14 +390,14 @@ String executeRequest(Task task) {
     return "\"\"";
   }
 
-  error("Invalid syntax");
+  error("Hey captain, we don't understand your orders!");
   return "";
 }
 
 // Syntax: RETURN [BARREL|PACKAGE]
 String executeReturn(Task task) {
   if (task.tokens.length != 2) {
-    return error("Invalid syntax");
+    return error("Hey captain, we don't understand your orders!");
   }
 
   if (packages.containsKey(task.tokens[1])) {
@@ -431,7 +414,7 @@ String executeReturn(Task task) {
 // Syntax: SAIL ON [PACKAGE]
 String executeSail(Task task) {
   if (task.tokens.length != 2) {
-    return error("Invalid syntax");
+    return error("Hey captain, we don't understand your orders!");
   }
   started = true;
   return "";
@@ -440,26 +423,19 @@ String executeSail(Task task) {
 // Syntax: SET [BARREL|PACKAGE] TO [BARREL|PACKAGE]
 String executeSet(Task task) {
   if (task.tokens.length != 4 || task.tokens[2].keyword != "TO") {
-    return error("Invalid syntax");
+    return error("Hey captain, we don't understand your orders!");
   }
+
+  ArgumentHelper toSetArg = ArgumentHelper(task.tokens.last);
 
   if (barrels.containsKey(task.tokens[1].variableName)) {
     double toSet = 0;
-    if (task.tokens.last.type == TokenType.Task) {
-      if (double.tryParse(
-              executeExpression(task.tokens.last.task ?? Task([]))) ==
-          null) {
-        error("Invalid return type of subtask");
-        return "";
-      }
 
-      toSet = double.tryParse(
-              executeExpression(task.tokens.last.task ?? Task([]))) ??
-          0;
-    } else if (task.tokens[3].type == TokenType.VariableName)
-      toSet = barrels[task.tokens[3].variableName ?? ""] ?? 0;
-    else if (task.tokens[3].type == TokenType.BarrelLiteral)
-      toSet = task.tokens[3].barrelValue ?? 0;
+    if (toSetArg.isBarrelSet) {
+      toSet = toSetArg.barrelValue;
+    } else {
+      error("Cannot set it");
+    }
 
     barrels[task.tokens[1].variableName ?? ""] = toSet;
     return toSet.toString();
@@ -467,13 +443,12 @@ String executeSet(Task task) {
 
   if (packages.containsKey(task.tokens[1].variableName)) {
     String toSet = "";
-    if (task.tokens.last.type == TokenType.Task) {
-      toSet = executeExpression(task.tokens.last.task ?? Task([]));
-      toSet = toSet.substring(1, toSet.length - 1);
-    } else if (packages.containsKey(task.tokens[3].variableName))
-      toSet = packages[task.tokens[3].variableName] ?? "";
-    else
-      toSet = task.tokens.last.packageValue ?? "";
+
+    if (toSetArg.isPackageSet) {
+      toSet = toSetArg.packageValue;
+    } else {
+      error("Cannot set it");
+    }
 
     packages[task.tokens[1].variableName ?? ""] = toSet;
     return "\"$toSet\"";
@@ -491,14 +466,18 @@ String executeSink(Task task) {
 // Syntax: SUBTRACT [BARREL] FROM [BARREL]
 String executeSubtract(Task task) {
   if (task.tokens.length != 4 || task.tokens[2].keyword != "FROM") {
-    error("Invalid syntax");
+    error("Hey captain, we don't understand your orders!");
   }
 
   double toSubtract = task.tokens[1].barrelValue ??
       getBarrel(task.tokens[1].variableName ?? "");
 
-  if (task.tokens.last.type != TokenType.VariableName) {
-    error("Invalid syntax");
+  ArgumentHelper toSubtractArg = ArgumentHelper(task.tokens[1]);
+
+  if (toSubtractArg.isBarrelSet) {
+    toSubtract = toSubtractArg.barrelValue;
+  } else {
+    error("We cannot subtract it!");
   }
 
   barrels[task.tokens.last.variableName ?? ""] =
@@ -510,28 +489,17 @@ String executeSubtract(Task task) {
 // Syntax: WAIT [BARREL] (in ms)
 String executeWait(Task task) {
   if (task.tokens.length != 2) {
-    return error("Invalid syntax");
+    return error("Hey captain, we don't understand your orders!");
   }
 
   double ms = 0;
 
-  if (task.tokens.last.type == TokenType.Task) {
-    if (double.tryParse(executeExpression(task.tokens.last.task ?? Task([]))) ==
-        null) {
-      error("Invalid return type of subtask");
-      return "";
-    }
+  ArgumentHelper msArg = ArgumentHelper(task.tokens.last);
 
-    ms =
-        double.tryParse(executeExpression(task.tokens.last.task ?? Task([]))) ??
-            0;
+  if (msArg.isBarrelSet) {
+    ms = msArg.barrelValue;
   } else {
-    ms = task.tokens.last.barrelValue ??
-        getBarrel(task.tokens.last.variableName ?? "");
-  }
-
-  if (task.tokens[1].type != TokenType.VariableName) {
-    error("Invalid syntax");
+    error("Cannot wait!");
   }
 
   ms = ms.roundToDouble();
