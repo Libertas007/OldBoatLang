@@ -13,6 +13,7 @@ final String TEMPLATE =
 
 void main(List<String> args) {
   if (args.length == 0) {
+    print("Using version 'v1.1'");
     print("Welcome to terminal for Boat! Start typing some Boat commands!");
     while (true) {
       started = true;
