@@ -8,13 +8,14 @@ Map<String, String> packages = {};
 int taskPointer = 0;
 int lineNum = -1;
 bool started = false;
+Scheduler scheduler = Scheduler([]);
 List<CodeBlockData> blocks = [];
 final String TEMPLATE =
     "SAIL ON yacht\n\n// Here comes your code\n// Remove comment below to see \"Hello world!\" program\n// BROADCAST \"Hello world!\"\n\nARRIVE AT port";
 
 void main(List<String> args) {
   if (args.length == 0) {
-    print("Using version 'v1.1'");
+    print("Using version 'v1.2'");
     print("Welcome to terminal for Boat! Start typing some Boat commands!");
     while (true) {
       started = true;
@@ -33,7 +34,7 @@ void main(List<String> args) {
 
     Lexer lexer = Lexer(file);
 
-    Scheduler scheduler = Scheduler(lexer.tokens);
+    scheduler = Scheduler(lexer.tokens);
 
     for (taskPointer = 0; taskPointer < scheduler.tasks.length; taskPointer++) {
       final task = scheduler.tasks[taskPointer];
@@ -98,6 +99,8 @@ String executeExpression(Task task) {
         return executeDivide(task);
       case "DROP":
         return executeDrop(task);
+      case "IF":
+        return executeIf(task);
       case "LISTEN TO":
         return executeListen(task);
       case "LOOP":
@@ -316,9 +319,26 @@ String executeIf(Task task) {
   }
 
   ArgumentHelper left = ArgumentHelper(task.tokens[1]);
-  Token op = task.tokens[2];
+  OperatorType op = task.tokens[2].operatorType ?? OperatorType.Not;
   ArgumentHelper right = ArgumentHelper(task.tokens[3]);
+  bool valid = evaluateCondition(left, op, right);
 
+  blocks.add(CodeBlockData(start: taskPointer, type: CodeBlockType.If));
+  int nesting = 0;
+  while (!valid) {
+    taskPointer++;
+
+    if (taskPointer == scheduler.tasks.length) break;
+
+    if (blockKeywords
+        .contains(scheduler.tasks[taskPointer].tokens.first.keyword)) nesting++;
+
+    if (scheduler.tasks[taskPointer].tokens.first.type == TokenType.BlockEnd) {
+      if (nesting == 0) break;
+
+      nesting--;
+    }
+  }
   return "";
 }
 
@@ -562,8 +582,44 @@ String readFileSync(String file) {
 
 bool evaluateCondition(
     ArgumentHelper left, OperatorType op, ArgumentHelper right) {
-  if ([OperatorType.Equals, OperatorType.NotEquals].contains(op)) {}
+  if ([OperatorType.Equals, OperatorType.NotEquals].contains(op)) {
+    if (left.isBarrelSet && right.isBarrelSet) {
+      bool equal = left.barrelValue == right.barrelValue;
 
+      if (op == OperatorType.Equals) {
+        return equal;
+      } else
+        return !equal;
+    }
+
+    if (left.isPackageSet && right.isPackageSet) {
+      bool equal = left.packageValue == right.packageValue;
+
+      if (op == OperatorType.Equals) {
+        return equal;
+      } else
+        return !equal;
+    }
+
+    error(
+        "Cannot compare ${left.isBarrelSet ? "BARREL" : "PACKAGE"} to ${right.isBarrelSet ? "BARREL" : "PACKAGE"}");
+  }
+
+  if (left.isPackageSet || right.isPackageSet) {
+    error("Cannot use PACKAGE values in numeric conditions");
+  }
+
+  switch (op) {
+    case OperatorType.GraterOrEqual:
+      return left.barrelValue >= right.barrelValue;
+    case OperatorType.GraterThan:
+      return left.barrelValue > right.barrelValue;
+    case OperatorType.LessOrEqual:
+      return left.barrelValue <= right.barrelValue;
+    case OperatorType.LessThan:
+      return left.barrelValue < right.barrelValue;
+    default:
+  }
   return false;
 }
 

@@ -57,6 +57,26 @@ BROADCAST result
 ARRIVE AT port
 ```
 
+### Truth-machine
+
+```
+SAIL ON "yacht"
+
+REQUEST PACKAGE X
+LISTEN TO X
+
+IF X == "0":
+    BROADCAST X
+    ARRIVE AT "P"
+END
+
+LOOP 9999999 TIMES:
+    BROADCAST X
+END
+```
+
+Note that Boat doesn't allow while loops yet, so looping 9999999 times is simulating infinity...
+
 ## How to use
 
 Write program ending in `.boat`. Then download `/build/boat.exe` and run `.\boat.exe {path to your script}` from the terminal.
@@ -272,6 +292,20 @@ END
 ```
 
 Doesn't return anything.
+
+#### `IF`
+
+**Syntax**: `IF [BARREL|PACKAGE] [OPERATOR] [BARREL|PACKAGE]:`
+
+Executes over block of code ended by `END` if the condition is true. Supported operators are: `==`, `!=`, `<=`, `>=`, `<` and `>`.
+
+_Examples_:
+
+```
+IF 5 == 5:
+    BROADCAST "5 is equal to 5!"
+END
+```
 
 ### Return value
 
