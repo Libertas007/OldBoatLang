@@ -5,7 +5,8 @@ import 'scheduler.dart';
 
 Map<String, double> barrels = {};
 Map<String, String> packages = {};
-int linePointer = 0;
+int taskPointer = 0;
+int lineNum = -1;
 bool started = false;
 List<CodeBlockData> blocks = [];
 final String TEMPLATE =
@@ -34,11 +35,13 @@ void main(List<String> args) {
 
     Scheduler scheduler = Scheduler(lexer.tokens);
 
-    scheduler.tasks.forEach((task) {
+    for (taskPointer = 0; taskPointer < scheduler.tasks.length; taskPointer++) {
+      final task = scheduler.tasks[taskPointer];
+      lineNum = task.lineNumber;
       if (task.tokens.length != 0) {
         executeExpression(task);
       }
-    });
+    }
   } else {
     switch (args[0]) {
       case "new":
@@ -70,7 +73,8 @@ void createNew(List<String> args) {
 }
 
 String executeExpression(Task task) {
-  final String command = task.tokens.first.commandName ?? "";
+  final String command =
+      task.tokens.first.commandName ?? task.tokens.first.keyword ?? "";
 
   if (task.tokens.first.type == TokenType.BlockEnd) {
     return executeEnd(task);
@@ -117,7 +121,7 @@ String executeExpression(Task task) {
       default:
         return error("Unknown command");
     }
-  return error("'SAIL' must be the first command!");
+  return error("'SAIL ON' must be the first command!");
 }
 
 // Syntax: ADD [BARREL] TO [BARREL]
@@ -246,7 +250,7 @@ String executeEnd(Task task) {
     }
 
     blocks[blocks.length - 1].iterationsLeft--;
-    linePointer = last.start;
+    taskPointer = last.start;
     if (last.iterationVar != "")
       barrels[last.iterationVar] = barrels[last.iterationVar]! + 1;
     return "";
@@ -275,9 +279,9 @@ String executeListen(Task task) {
 
 // Syntax: LOOP [BARREL] TIMES: ... END
 String executeLoop(Task task) {
-  if (task.tokens.length < 5 ||
-      task.tokens[2].keyword == "TIMES" ||
-      task.tokens.last.type == TokenType.BlockStart) {
+  if (task.tokens.length > 5 ||
+      task.tokens[2].keyword != "TIMES" ||
+      task.tokens.last.type != TokenType.BlockStart) {
     return error("Hey captain, we don't understand your orders!");
   }
 
@@ -290,7 +294,7 @@ String executeLoop(Task task) {
   }
 
   CodeBlockData toAdd = CodeBlockData(
-    start: linePointer,
+    start: taskPointer,
     type: CodeBlockType.Loop,
     iterationsLeft: iterations.ceil() - 1,
   );
@@ -304,13 +308,19 @@ String executeLoop(Task task) {
   return "";
 }
 
-// Syntax: IF {CONDITION}: ... END
-/* String executeIf(Task task) {
-  if (args.length < 4 || !args.last.endsWith(":")) {
-    return error("Hey captain, we don't understand your orders!");
+// Syntax: IF [BARREl|PACKAGE] [OPERATOR] [BARREL|PACKAGE]: ... END
+String executeIf(Task task) {
+  if (task.tokens.last.type != TokenType.BlockStart ||
+      task.tokens.length != 5) {
+    error("Hey captain, we don't understand your orders!");
   }
+
+  ArgumentHelper left = ArgumentHelper(task.tokens[1]);
+  Token op = task.tokens[2];
+  ArgumentHelper right = ArgumentHelper(task.tokens[3]);
+
   return "";
-} */
+}
 
 // Syntax: MULTIPLY [BARREL] BY [BARREL]
 String executeMultiply(Task task) {
@@ -332,7 +342,7 @@ String executeMultiply(Task task) {
   }
 
   barrels[task.tokens[1].variableName ?? ""] =
-      barrels[task.tokens[1].variableName ?? ""]! / toMultiply;
+      barrels[task.tokens[1].variableName ?? ""]! * toMultiply;
   return barrels[task.tokens[1].variableName ?? ""].toString();
 }
 
@@ -541,42 +551,20 @@ String getPackage(String name) {
   return "";
 }
 
-/* bool evaluateExpression(Task task) {
-  dynamic previous;
-  bool stringConstruction = false;
-  Type expect = String;
-
-  for (var i = 0; i < args.length; i++) {
-    final String element = args[i];
-
-    if (element.startsWith("\"")) {
-      previous = element.replaceAll("\"", "");
-      stringConstruction = true;
-      continue;
-    }
-
-    if (element.endsWith("\"")) {
-      previous += element.replaceAll("\"", "");
-      stringConstruction = false;
-      continue;
-    }
-
-    if (stringConstruction) {
-      previous += element.replaceAll("\"", "");
-      continue;
-    }
-  }
-
-  return false;
-} */
-
 String error(String text) {
-  print(text);
+  print("$text (line $lineNum)");
   return exit(1);
 }
 
 String readFileSync(String file) {
   return new File(file).readAsStringSync();
+}
+
+bool evaluateCondition(
+    ArgumentHelper left, OperatorType op, ArgumentHelper right) {
+  if ([OperatorType.Equals, OperatorType.NotEquals].contains(op)) {}
+
+  return false;
 }
 
 class CodeBlockData {
@@ -596,5 +584,6 @@ class CodeBlockData {
 enum CodeBlockType {
   Loop,
   If,
+  Else,
   While,
 }

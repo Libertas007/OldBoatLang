@@ -4,7 +4,7 @@ import 'main.dart';
 class Scheduler {
   List<Token> tokens;
   List<Task> tasks = [];
-  Token token = Token(TokenType.BlockEnd);
+  Token token = Token(TokenType.BlockEnd, -1);
   int pos = -1;
 
   Scheduler(this.tokens) {
@@ -15,8 +15,12 @@ class Scheduler {
   void run() {
     List<Token> toMake = [];
     bool ignore = false;
+    int lineNum = -1;
 
     while (token.type != TokenType.EndOfFile) {
+      if (lineNum == -1) {
+        lineNum = token.lineNum;
+      }
       if (token.type == TokenType.Comment) {
         ignore = true;
         nextToken();
@@ -36,7 +40,7 @@ class Scheduler {
           nextToken();
           continue;
         }
-        tasks.add(Task(toMake));
+        tasks.add(Task(toMake, lineNum));
         toMake = [];
         nextToken();
         continue;
@@ -45,16 +49,17 @@ class Scheduler {
       nextToken();
     }
 
-    tasks.add(Task(toMake));
+    tasks.add(Task(toMake, lineNum));
   }
 
   void nextToken() {
     pos++;
-    token = pos < tokens.length ? tokens[pos] : Token(TokenType.EndOfFile);
+    token = pos < tokens.length ? tokens[pos] : Token(TokenType.EndOfFile, -1);
   }
 
   Token makeSubtoken() {
     List<Token> subTokens = [];
+    int lineNum = token.lineNum;
     nextToken();
 
     while (token.type != TokenType.EndOfLine &&
@@ -67,7 +72,7 @@ class Scheduler {
       nextToken();
     }
 
-    return Token(TokenType.Task, task: Task(subTokens));
+    return Token(TokenType.Task, lineNum, task: Task(subTokens, lineNum));
   }
 
   @override
@@ -78,8 +83,9 @@ class Scheduler {
 
 class Task {
   List<Token> tokens;
+  int lineNumber;
 
-  Task(this.tokens);
+  Task(this.tokens, this.lineNumber);
 
   @override
   String toString() {
@@ -104,7 +110,7 @@ class ArgumentHelper {
         isPackageSet = true;
         break;
       case TokenType.Task:
-        resolveTask(token.task ?? Task([]));
+        resolveTask(token.task ?? Task([], -1));
         break;
       case TokenType.VariableName:
         resolveVariable(token);
