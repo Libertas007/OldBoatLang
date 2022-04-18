@@ -143,7 +143,7 @@ _Examples_:
 
 `SET y TO "Hello world!"`
 
-Return the new value of variable.
+Returns the new value of variable.
 
 ### Mathematical operations
 
@@ -231,7 +231,7 @@ _Examples_:
 
 `LISTEN TO x`
 
-ReturnS the new value of variable.
+Returns the new value of variable.
 
 ### Control flow
 
@@ -306,6 +306,8 @@ IF 5 == 5:
     BROADCAST "5 is equal to 5!"
 END
 ```
+
+Doesn't return anything.
 
 ### Return value
 
