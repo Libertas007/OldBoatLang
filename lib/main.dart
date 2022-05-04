@@ -6,7 +6,7 @@ import 'context.dart';
 import 'variables.dart';
 import 'package:path/path.dart' as p;
 
-final String version = "v1.2";
+final String version = "v1.2.2";
 
 int lineNum = -1;
 bool started = false;
