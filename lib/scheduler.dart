@@ -1,5 +1,7 @@
+import 'context.dart';
 import 'lexer.dart';
 import 'main.dart';
+import 'variables.dart';
 
 class Scheduler {
   List<Token> tokens;
@@ -94,23 +96,19 @@ class Task {
 }
 
 class ArgumentHelper {
-  String packageValue = "";
-  double barrelValue = 0;
-  bool isBarrelSet = false;
-  bool isPackageSet = false;
+  ExecutionContext ctx;
+  Variable variable = None();
 
-  ArgumentHelper(Token token) {
+  ArgumentHelper(Token token, this.ctx) {
     switch (token.type) {
       case TokenType.BarrelLiteral:
-        barrelValue = token.barrelValue ?? 0;
-        isBarrelSet = true;
+        variable = Barrel(token.barrelValue ?? 0);
         break;
       case TokenType.PackageLiteral:
-        packageValue = token.packageValue ?? "";
-        isPackageSet = true;
+        variable = Package(token.packageValue ?? "");
         break;
       case TokenType.Task:
-        resolveTask(token.task ?? Task([], -1));
+        variable = executeExpression(token.task ?? Task([], -1), ctx);
         break;
       case TokenType.VariableName:
         resolveVariable(token);
@@ -120,24 +118,9 @@ class ArgumentHelper {
     }
   }
 
-  void resolveTask(Task task) {
-    String value = executeExpression(task);
-    if (double.tryParse(value) == null) {
-      packageValue = value;
-      isPackageSet = true;
-    } else {
-      barrelValue = double.tryParse(value) ?? 0;
-      isBarrelSet = true;
-    }
-  }
-
   void resolveVariable(Token token) {
-    if (barrels.containsKey(token.variableName)) {
-      barrelValue = barrels[token.variableName ?? ""] ?? 0;
-      isBarrelSet = true;
-    } else if (packages.containsKey(token.variableName)) {
-      packageValue = packages[token.variableName ?? ""] ?? "";
-      isPackageSet = true;
+    if (ctx.variablePool.variables.containsKey(token.variableName)) {
+      variable = ctx.variablePool.getVariable(token.variableName ?? "");
     } else {
       error("There's no '${token.variableName}' in your cabin!");
     }
@@ -145,9 +128,9 @@ class ArgumentHelper {
 
   @override
   String toString() {
-    if (isBarrelSet) return "<BARREL:$barrelValue>";
-    if (isPackageSet)
-      return "<PACKAGE:$packageValue>";
+    if (variable is Barrel) return "<BARREL:${variable.value}>";
+    if (variable is Package)
+      return "<PACKAGE:${variable.value}>";
     else
       return "<>";
   }

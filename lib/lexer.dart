@@ -3,7 +3,7 @@ import 'scheduler.dart';
 
 final String numbers = "0123456789";
 final String letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-final String validInKeywords = "_";
+final String validInKeywords = "_.";
 const operators = ["==", ">=", "<=", "!=", "!", ">", "<"];
 const keywords = ["TO", "BY", "FROM", "LOOP", "TIMES", "AS", "END", "IF"];
 const commands = [
