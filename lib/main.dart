@@ -1,10 +1,12 @@
 import 'dart:io';
 
-import 'functions.dart';
 import 'lexer.dart';
 import 'scheduler.dart';
 import 'context.dart';
 import 'variables.dart';
+import 'package:path/path.dart' as p;
+
+final String version = "v1.2.1";
 
 int lineNum = -1;
 bool started = false;
@@ -15,15 +17,23 @@ final String TEMPLATE =
     "SAIL ON yacht\n\n// Here comes your code\n// Remove comment below to see \"Hello world!\" program\n// BROADCAST \"Hello world!\"\n\nARRIVE AT port";
 
 void boatMainEntryPoint(List<String> args) {
-  if (args.length == 0) {
-    print("Using version 'v1.2'");
+  print(homeDirectory());
+  if (args.isEmpty) {
+    print("""          ooooo
+       _ooo
+       H
+|======H========|
+\\     BOAT     /
+ \\____________/
+~~~~~~~~~~~~~~~~~""");
+    print("Using version '$version'");
     print("Welcome to terminal for Boat! Start typing some Boat commands!");
     while (true) {
       started = true;
       stdout.write("Boat terminal > ");
       String? input = stdin.readLineSync();
 
-      if (input == null) input = "";
+      input ??= "";
       if (input == "") continue;
       final Lexer lexer = Lexer(input);
       final Scheduler scheduler = Scheduler(lexer.tokens);
@@ -31,7 +41,9 @@ void boatMainEntryPoint(List<String> args) {
       print("-> " +
           executeExpression(scheduler.tasks[0], globalContext).toString());
     }
-  } else if (args.length == 1) {
+  } else if (args[1] == "new") {
+    createNew(args);
+  } else {
     String file =
         readFileSync(args[0].endsWith(".boat") ? args[0] : args[0] + ".boat");
 
@@ -44,15 +56,9 @@ void boatMainEntryPoint(List<String> args) {
         globalContext.taskPointer++) {
       final task = scheduler.tasks[globalContext.taskPointer];
       lineNum = task.lineNumber;
-      if (task.tokens.length != 0) {
+      if (task.tokens.isNotEmpty) {
         executeExpression(task, globalContext);
       }
-    }
-  } else {
-    switch (args[0]) {
-      case "new":
-        createNew(args);
-        break;
     }
   }
 }
@@ -619,4 +625,15 @@ enum CodeBlockType {
   If,
   Else,
   While,
+}
+
+String homeDirectory() {
+  switch (Platform.operatingSystem) {
+    case 'linux':
+    case 'macos':
+      return Platform.environment['HOME'] ?? "";
+    case 'windows':
+      return Platform.environment['USERPROFILE'] ?? "";
+  }
+  return "";
 }

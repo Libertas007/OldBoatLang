@@ -11,11 +11,14 @@ jobs:
                 os: [ubuntu-latest, windows-latest, macOS-latest]
                 include:
                     - os: ubuntu-latest
-                      output-name: boat-linux
+                      output-boat: boat-linux
+                      output-update: boat-update-linux
                     - os: macOS-latest
-                      output-name: boat-mac
+                      output-boat: boat-mac
+                      output-update: boat-update-mac
                     - os: windows-latest
-                      output-name: boat-windows.exe
+                      output-boat: boat-windows.exe
+                      output-update: boat-update-windows.exe
 
         steps:
             - name: Checkout
@@ -23,9 +26,11 @@ jobs:
             - name: Setup Dart SDK
               uses: dart-lang/setup-dart@v1.3
             - run: pub get
-            - name: Compile
-              run: dart compile exe bin/main.dart -o build/${{ matrix.output-name }}
-            - uses: actions/upload-artifact@v1
+            - name: Compile Boat
+              run: dart compile exe bin/main.dart -o build/${{ matrix.output-boat }}
+            - name: Compile Boat update
+              run: dart compile exe bin/update.dart -o build/${{ matrix.output-update }}
+            - uses: actions/upload-artifact@v3
               with:
                   name: native-executables
                   path: build

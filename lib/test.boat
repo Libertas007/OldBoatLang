@@ -1,21 +1,7 @@
-SAIL ON "yacht"
-
-REQUEST PACKAGE X
-LISTEN TO X
-
-IF X == "0":
-    BROADCAST X
-    ARRIVE AT "P"
-END
-
-LOOP 9999999 TIMES:
-    BROADCAST X
-END
-
-CUSTOM_ADD 5 TO 6
-
-DEFINE CUSTOM_ADD BARREL X, TO, BARREL Y:
-   -> (ADD X TO Y) 
-END WITH BARREL
-
-PUBLIC CUSTOM_ADD
+          ooooo
+       _ooo
+       H
+|======H========|
+\     BOAT     /
+ \____________/
+~~~~~~~~~~~~~~~~~
