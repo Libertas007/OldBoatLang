@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:boatlang/main.dart' show version;
+import 'package:boatlang/main.dart' show version, homeDirectory;
 
 void main(List<String> args) async {
   print("Checking for updates...");
@@ -20,12 +20,32 @@ void main(List<String> args) async {
 
   List<dynamic> assets = asMap["assets"];
 
-  String downloadUrl = assets
-      .firstWhere(
-          (asset) => asset["name"] == packageNames[Platform.operatingSystem])
-      .toList()[0]["browser_download_url"];
+  print("Found newer version '${asMap["tag_name"]}'");
+  String downloadUrl = assets.firstWhere((asset) =>
+      asset["name"] ==
+      packageNames[Platform.operatingSystem])["browser_download_url"];
 
-  print(downloadUrl);
+  if (!Directory(homeDirectory() + ".boat").existsSync()) {
+    print("'.boat' directory doesn't exist, making new");
+    Directory(homeDirectory() + Platform.pathSeparator + ".boat").createSync();
+  }
+
+  print(
+      "Downloading new version to '${homeDirectory() + Platform.pathSeparator}.boat${Platform.pathSeparator}'");
+
+  final newVersion = await http.get(Uri.parse(downloadUrl));
+
+  final file = File(homeDirectory() +
+      Platform.pathSeparator +
+      ".boat" +
+      Platform.pathSeparator +
+      (Platform.isWindows ? "boat.exe" : "boat"));
+
+  print("Extracting to '${file.path}'");
+
+  file.writeAsBytesSync(newVersion.bodyBytes);
+
+  print("Done!");
 }
 
 Map<String, String> packageNames = {

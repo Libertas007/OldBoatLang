@@ -6,7 +6,7 @@ import 'context.dart';
 import 'variables.dart';
 import 'package:path/path.dart' as p;
 
-final String version = "v1.2.1";
+final String version = "v1.2";
 
 int lineNum = -1;
 bool started = false;
@@ -17,7 +17,6 @@ final String TEMPLATE =
     "SAIL ON yacht\n\n// Here comes your code\n// Remove comment below to see \"Hello world!\" program\n// BROADCAST \"Hello world!\"\n\nARRIVE AT port";
 
 void boatMainEntryPoint(List<String> args) {
-  print(homeDirectory());
   if (args.isEmpty) {
     print("""          ooooo
        _ooo
@@ -41,8 +40,15 @@ void boatMainEntryPoint(List<String> args) {
       print("-> " +
           executeExpression(scheduler.tasks[0], globalContext).toString());
     }
-  } else if (args[1] == "new") {
+  } else if (args[0] == "new") {
     createNew(args);
+  } else if (args[0] == "update") {
+    Process.runSync(
+        homeDirectory() +
+            p.separator +
+            ".boat/boat-update" +
+            (Platform.isWindows ? ".exe" : ""),
+        []);
   } else {
     String file =
         readFileSync(args[0].endsWith(".boat") ? args[0] : args[0] + ".boat");
