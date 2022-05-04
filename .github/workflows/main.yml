@@ -19,7 +19,8 @@ jobs:
 
         steps:
             - uses: actions/checkout@v1
-            - uses: DanTup/gh-actions/setup-dart@master
+            - name: Setup Dart SDK
+              uses: dart-lang/setup-dart@v1.3
             - run: mkdir build
             - run: dart compile bin/main.dart -v -o build/${{ matrix.output-name }}
             - uses: actions/upload-artifact@v1
