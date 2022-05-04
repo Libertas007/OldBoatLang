@@ -18,11 +18,12 @@ jobs:
                       output-name: boat-windows.exe
 
         steps:
-            - uses: actions/checkout@v1
+            - name: Checkout
+              uses: actions/checkout@v1
             - name: Setup Dart SDK
               uses: dart-lang/setup-dart@v1.3
-            - run: mkdir build
-            - run: dart compile bin/main.dart -v -o build/${{ matrix.output-name }}
+            - name: Compile
+              run: dart compile bin/main.dart -v -o build/${{ matrix.output-name }}
             - uses: actions/upload-artifact@v1
               with:
                   name: native-executables
