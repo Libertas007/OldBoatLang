@@ -25,7 +25,7 @@ jobs:
               uses: actions/checkout@v1
             - name: Setup Dart SDK
               uses: dart-lang/setup-dart@v1.3
-            - run: pub get
+            - run: dart pub get
             - name: Compile Boat
               run: dart compile exe bin/main.dart -o build/${{ matrix.output-boat }}
             - name: Compile Boat update
