@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:boatlang/main.dart' show version, homeDirectory;
+import 'package:boatlang/main.dart';
 
 void main(List<String> args) async {
   print("Checking for updates...");
@@ -13,7 +13,8 @@ void main(List<String> args) async {
 
   Map<String, dynamic> asMap = jsonDecode(res);
 
-  if (asMap["tag_name"] == version) {
+  if (asMap["tag_name"] == version &&
+      Directory(boatHomeDirectory()).existsSync()) {
     print("Everything is all right, you're up-to-date!");
     return;
   }
@@ -25,25 +26,29 @@ void main(List<String> args) async {
       asset["name"] ==
       packageNames[Platform.operatingSystem])["browser_download_url"];
 
-  if (!Directory(homeDirectory() + ".boat").existsSync()) {
+  if (!Directory(boatHomeDirectory()).existsSync()) {
     print("'.boat' directory doesn't exist, making new");
-    Directory(homeDirectory() + Platform.pathSeparator + ".boat").createSync();
+    Directory(boatHomeDirectory()).createSync();
   }
 
-  print(
-      "Downloading new version to '${homeDirectory() + Platform.pathSeparator}.boat${Platform.pathSeparator}'");
+  if (!Directory(boatBinDirectory()).existsSync()) {
+    Directory(boatBinDirectory()).createSync();
+  }
+
+  print("Downloading new version to '${boatHomeDirectory()}'");
 
   final newVersion = await http.get(Uri.parse(downloadUrl));
 
-  final file = File(homeDirectory() +
-      Platform.pathSeparator +
-      ".boat" +
-      Platform.pathSeparator +
-      (Platform.isWindows ? "boat.exe" : "boat"));
+  final file = File(pathToBoatExecutable());
 
   print("Extracting to '${file.path}'");
 
   file.writeAsBytesSync(newVersion.bodyBytes);
+  final configFile =
+      File(boatHomeDirectory() + Platform.pathSeparator + ".config");
+
+  configFile.createSync();
+  configFile.writeAsStringSync("afterupdate=1");
 
   print("Done!");
 }

@@ -8,8 +8,14 @@ class BoatFunction {
   List<Task> tasks = [];
   List<BoatFunctionArgumentWrapper> arguments = [];
   String name;
+  Variable Function(List<Variable> arguments, ExecutionContext ctx)? _function;
 
   BoatFunction(this.name, this.tasks, this.arguments);
+  BoatFunction.native(
+      this.name,
+      this.arguments,
+      Variable Function(List<Variable> arguments, ExecutionContext ctx)
+          this._function);
 
   Variable run(List<Token> tokenArgs) {
     ExecutionContext ctx = ExecutionContext();
@@ -36,13 +42,17 @@ class BoatFunction {
       ctx.variablePool.createVariable(arguments[i].name, args[i]);
     }
 
+    if (_function != null) {
+      return _function!(arguments.map((e) => e.variable).toList(), ctx);
+    }
+
     for (ctx.taskPointer = 0;
         ctx.taskPointer < tasks.length;
         ctx.taskPointer++) {
       final task = tasks[ctx.taskPointer];
       lineNum = task.lineNumber;
 
-      if (task.tokens.length != 0) {
+      if (task.tokens.isNotEmpty) {
         executeExpression(task, ctx);
       }
     }
@@ -57,5 +67,3 @@ class BoatFunctionArgumentWrapper {
 
   BoatFunctionArgumentWrapper(this.name, this.variable);
 }
-
-enum VariableType { Barrel, Package }

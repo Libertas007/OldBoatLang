@@ -111,18 +111,10 @@ class ArgumentHelper {
         variable = executeExpression(token.task ?? Task([], -1), ctx);
         break;
       case TokenType.VariableName:
-        resolveVariable(token);
+        variable = ctx.variablePool.getVariable(token.variableName ?? "");
         break;
       default:
         break;
-    }
-  }
-
-  void resolveVariable(Token token) {
-    if (ctx.variablePool.variables.containsKey(token.variableName)) {
-      variable = ctx.variablePool.getVariable(token.variableName ?? "");
-    } else {
-      error("There's no '${token.variableName}' in your cabin!");
     }
   }
 

@@ -4,9 +4,14 @@ import 'lexer.dart';
 import 'scheduler.dart';
 import 'context.dart';
 import 'variables.dart';
+import 'registry.dart';
+import 'libraryloader.dart' as lib;
 import 'package:path/path.dart' as p;
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 final String version = "v1.2.2";
+final Registry registry = Registry();
 
 int lineNum = -1;
 bool started = false;
@@ -16,7 +21,46 @@ ExecutionContext globalContext = ExecutionContext();
 final String TEMPLATE =
     "SAIL ON yacht\n\n// Here comes your code\n// Remove comment below to see \"Hello world!\" program\n// BROADCAST \"Hello world!\"\n\nARRIVE AT port";
 
-void boatMainEntryPoint(List<String> args) {
+void boatMainEntryPoint(List<String> args) async {
+  lib.load();
+  globalContext.variablePool.createVariable("YES", Switch(true));
+  globalContext.variablePool.createVariable("NO", Switch(false));
+  globalContext.variablePool.variables["YES"]!.applyModifier(Constant());
+  globalContext.variablePool.variables["NO"]!.applyModifier(Constant());
+
+  final Map<String, String> packageNames = {
+    "windows": "boat-update-windows.exe",
+    "linux": "boat-update-linux",
+    "macos": "boat-update-mac",
+  };
+
+  if (File(boatHomeDirectory() + p.separator + ".config").readAsStringSync() ==
+      "afterupdate=1") {
+    print("Performing after-update jobs...");
+
+    String res = (await http.get(Uri.parse(
+            "https://api.github.com/repos/Libertas007/BoatLang/releases/latest")))
+        .body;
+
+    Map<String, dynamic> asMap = jsonDecode(res);
+
+    List<dynamic> assets = asMap["assets"];
+
+    String downloadUrl = assets.firstWhere((asset) =>
+        asset["name"] ==
+        packageNames[Platform.operatingSystem])["browser_download_url"];
+
+    final newVersion = await http.get(Uri.parse(downloadUrl));
+
+    final file = File(pathToBoatUpdater());
+
+    file.writeAsBytesSync(newVersion.bodyBytes);
+    File(boatHomeDirectory() + p.separator + ".config")
+        .writeAsStringSync("afterupdate=0");
+
+    print("Done");
+  }
+
   if (args.isEmpty) {
     print("""          ooooo
        _ooo
@@ -42,13 +86,6 @@ void boatMainEntryPoint(List<String> args) {
     }
   } else if (args[0] == "new") {
     createNew(args);
-  } else if (args[0] == "update") {
-    Process.runSync(
-        homeDirectory() +
-            p.separator +
-            ".boat/boat-update" +
-            (Platform.isWindows ? ".exe" : ""),
-        []);
   } else {
     String file =
         readFileSync(args[0].endsWith(".boat") ? args[0] : args[0] + ".boat");
@@ -67,6 +104,8 @@ void boatMainEntryPoint(List<String> args) {
       }
     }
   }
+
+  exit(0);
 }
 
 void createNew(List<String> args) {
@@ -292,11 +331,9 @@ Variable executeListen(Task task, ExecutionContext ctx) {
     return error("Hey captain, we don't understand your orders!");
   }
 
-  if (!ctx.variablePool.variables.containsKey(task.tokens.last.variableName) &&
-      ctx.variablePool.getVariable(task.tokens.last.variableName ?? "")
-          is Package) {
-    return error(
-        "No matter how hard we try, we cannot find package ${task.tokens.last.variableName} in your cabin...");
+  if (ctx.variablePool.getVariable(task.tokens.last.variableName ?? "")
+      is Package) {
+    return error("'${task.tokens.last.variableName}' is not a PACKAGE");
   }
 
   String input = stdin.readLineSync() ?? "";
@@ -449,21 +486,15 @@ Variable executeRepack(Task task, ExecutionContext ctx) {
 
 // Syntax: REQUEST (BARREL|PACKAGE) [PACKAGE]
 Variable executeRequest(Task task, ExecutionContext ctx) {
-  if (task.tokens.length != 3) {
+  if (task.tokens.length != 3 ||
+      task.tokens[1].type != TokenType.VariableType) {
     return error("Hey captain, we don't understand your orders!");
   }
 
-  if (task.tokens[1].variableType == "BARREL") {
-    ctx.variablePool
-        .createVariable(task.tokens[2].variableName ?? "", Barrel(0));
-    return Barrel(0);
-  }
+  Variable toCreate = registry.variableTypes
+      .firstWhere((element) => element.typeName == task.tokens[1].variableType);
 
-  if (task.tokens[1].variableType == "PACKAGE") {
-    ctx.variablePool
-        .createVariable(task.tokens[2].variableName ?? "", Package(""));
-    return Package("");
-  }
+  ctx.variablePool.createVariable(task.tokens[2].variableName ?? "", toCreate);
 
   error("Hey captain, we don't understand your orders!");
   return None();
@@ -489,14 +520,12 @@ Variable executeSet(Task task, ExecutionContext ctx) {
     return error("Hey captain, we don't understand your orders!");
   }
 
-  if (!ctx.variablePool.variables.containsKey(task.tokens[1].variableName))
-    error("Variable ${task.tokens[1].variableName} is not defined");
   ArgumentHelper toSetArg = ArgumentHelper(task.tokens.last, ctx);
 
   if (!toSetArg.variable.sameType(
       ctx.variablePool.getVariable(task.tokens[1].variableName ?? ""))) {
     error(
-        "Cannot set ${task.tokens[1].variableName} to ${toSetArg.variable} because they have different type!");
+        "Cannot set ${task.tokens[1].variableName} to ${toSetArg.variable} because they are made of different types!");
   }
 
   ctx.variablePool
@@ -562,7 +591,6 @@ Variable executeWait(Task task, ExecutionContext ctx) {
 Variable error(String text) {
   print("$text (line $lineNum)");
   exit(1);
-  return None();
 }
 
 String readFileSync(String file) {
@@ -642,4 +670,26 @@ String homeDirectory() {
       return Platform.environment['USERPROFILE'] ?? "";
   }
   return "";
+}
+
+String boatHomeDirectory() {
+  return homeDirectory() + p.separator + ".boat";
+}
+
+String boatBinDirectory() {
+  return boatHomeDirectory() + p.separator + "bin";
+}
+
+String pathToBoatExecutable() {
+  return boatBinDirectory() +
+      p.separator +
+      "boat" +
+      (Platform.isWindows ? ".exe" : "");
+}
+
+String pathToBoatUpdater() {
+  return boatBinDirectory() +
+      p.separator +
+      "update" +
+      (Platform.isWindows ? ".exe" : "");
 }

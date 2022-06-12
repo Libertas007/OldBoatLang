@@ -1,10 +1,28 @@
+import 'dart:io';
+
 import 'package:boatlang/main.dart';
 
-void main(List<String> arguments) {
-  try {
-    boatMainEntryPoint(arguments);
-  } catch (e, s) {
-    print("There was some problem in Boat core, please report it to Libertas.");
-    print(e);
+void main(List<String> args) async {
+  if (args.isEmpty) {
+    await Process.start(
+      pathToBoatExecutable(),
+      [],
+      mode: ProcessStartMode.inheritStdio,
+    );
+    return;
+  }
+
+  if (args.isNotEmpty && args[0] == "update") {
+    await Process.start(
+      pathToBoatUpdater(),
+      [],
+      mode: ProcessStartMode.inheritStdio,
+    );
+  } else {
+    await Process.start(
+      pathToBoatExecutable(),
+      args,
+      mode: ProcessStartMode.inheritStdio,
+    );
   }
 }

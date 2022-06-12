@@ -1,8 +1,11 @@
+// ignore_for_file: constant_identifier_names
+
 import 'main.dart';
 import 'scheduler.dart';
 
 final String numbers = "0123456789";
-final String letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+final String letters =
+    "aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzžAÁBCČDĎEÉĚFGHIÍJKLMNŇOÓPQRŘSŠTŤUÚŮVWXYÝZŽ";
 final String validInKeywords = "_.";
 const operators = ["==", ">=", "<=", "!=", "!", ">", "<"];
 const keywords = ["TO", "BY", "FROM", "LOOP", "TIMES", "AS", "END", "IF"];
@@ -24,7 +27,6 @@ const commands = [
   "SUBTRACT",
   "WAIT"
 ];
-final variableTypes = ["PACKAGE", "BARREL"];
 final blockKeywords = ["IF", "LOOP"];
 
 class Token {
@@ -137,6 +139,9 @@ class Lexer {
           lineNumber++;
           tokens.add(Token(TokenType.EndOfLine, lineNumber));
           break;
+        case ";":
+          tokens.add(Token(TokenType.EndOfLine, lineNumber));
+          break;
         case ":":
           tokens.add(Token(TokenType.BlockStart, lineNumber));
           break;
@@ -201,7 +206,8 @@ class Lexer {
     else if (commands.contains(keyword))
       tokens
           .add(Token(TokenType.CommandName, lineNumber, commandName: keyword));
-    else if (variableTypes.contains(keyword))
+    else if (registry.variableTypes
+        .any((element) => element.typeName == keyword))
       tokens.add(
           Token(TokenType.VariableType, lineNumber, variableType: keyword));
     else

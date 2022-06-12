@@ -44,6 +44,10 @@ class VariablePool {
     }
 
     if (variables.containsKey(name)) {
+      if (!variables[name]!.allowsOperation(VariableOperation.Read)) {
+        error("Variable '$name' doesn't allow WRITE permission.");
+      }
+
       return variables[name] ?? None();
     }
 
@@ -79,6 +83,9 @@ class VariablePool {
     }
 
     if (variables.containsKey(name)) {
+      if (!variables[name]!.allowsOperation(VariableOperation.Write)) {
+        error("Variable '$name' doesn't allow WRITE permission.");
+      }
       variables[name] = variable;
       return;
     }
@@ -151,15 +158,31 @@ class VariablePool {
 
 class Variable {
   dynamic value;
+  static dynamic defaultValue;
   List<Variable> extendsTypes = [];
+  List<Variable> ofTypes = [];
+  List<VariableModifier> modifiers = [];
+
+  final String typeName = "GENERIC";
 
   bool sameType(Variable variable) {
-    return this.runtimeType == variable.runtimeType;
+    return runtimeType == variable.runtimeType;
+  }
+
+  void applyModifier(VariableModifier modifier) {
+    modifiers.add(modifier);
+  }
+
+  bool allowsOperation(VariableOperation operation) {
+    return modifiers.every((modifier) => modifier.allowOperation(operation));
   }
 }
 
 class Package extends Variable {
-  covariant String value = "";
+  covariant String value;
+  static String defaultValue = "";
+
+  final String typeName = "PACKAGE";
 
   Package(this.value);
 
@@ -170,7 +193,10 @@ class Package extends Variable {
 }
 
 class Barrel extends Variable {
-  covariant double value = 0;
+  covariant double value;
+  static double defaultValue = 0;
+
+  final String typeName = "BARREL";
 
   Barrel(this.value);
 
@@ -181,7 +207,10 @@ class Barrel extends Variable {
 }
 
 class Switch extends Variable {
-  covariant bool value = false;
+  covariant bool value;
+
+  final String typeName = "SWITCH";
+  static bool defaultValue = false;
 
   Switch(this.value);
 
@@ -194,8 +223,28 @@ class Switch extends Variable {
 class None extends Variable {
   covariant String value = "__NONE__";
 
+  final String typeName = "NONE";
+  static String defaultValue = "__NONE__";
+
   @override
   String toString() {
     return "NONE";
+  }
+}
+
+abstract class VariableModifier {
+  abstract final String name;
+  bool allowOperation(VariableOperation operation);
+}
+
+enum VariableOperation { Write, Read }
+
+class Constant extends VariableModifier {
+  @override
+  final String name = "CONSTANT";
+
+  @override
+  bool allowOperation(VariableOperation operation) {
+    return operation != VariableOperation.Write;
   }
 }

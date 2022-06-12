@@ -1,7 +1,8 @@
-          ooooo
-       _ooo
-       H
-|======H========|
-\     BOAT     /
- \____________/
-~~~~~~~~~~~~~~~~~
+// Syntax I want
+
+DEFINE CUSTOM_ADD BARREL X BARREL Y:
+   ADD X TO Y
+   -> Y
+END
+
+BROADCAST (CUSTOM_ADD 5 3)
