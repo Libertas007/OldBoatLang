@@ -10,7 +10,7 @@ import 'package:path/path.dart' as p;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-final String version = "v1.2.2";
+final String version = "v1.3";
 final Registry registry = Registry();
 
 int lineNum = -1;
